@@ -59,7 +59,7 @@ func DoRates(currencies []string) []*RateRecord {
 		return &record
 	}
 
-	if exchangeRateTable != nil {
+	if exchangeRateTable == nil {
 		return nil
 	}
 
