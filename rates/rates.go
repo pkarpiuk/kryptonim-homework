@@ -5,8 +5,9 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/shopspring/decimal"
 	"example/kryptonim-homework/utils"
+
+	"github.com/shopspring/decimal"
 )
 
 type RateRecord struct {
@@ -21,14 +22,18 @@ const BASE_CURRENCY = "USD"
 func DownloadRates(currencies []string) map[string]*utils.ExchangeRate {
 	var resultRaw struct {
 		Rates map[string]float64
+		Error bool
 	}
 	result := make(map[string]*utils.ExchangeRate)
 	resp, err := http.Get(fmt.Sprintf("https://openexchangerates.org/api/latest.json?app_id=%s&base=%s", APP_ID, BASE_CURRENCY))
 	if err != nil {
-		panic(err)
+		return nil
 	}
 	defer resp.Body.Close()
 	err = json.NewDecoder(resp.Body).Decode(&resultRaw)
+	if (err != nil) || resultRaw.Error {
+		return nil
+	}
 	for ticker, val := range resultRaw.Rates {
 		result[ticker] = &utils.ExchangeRate{Ticker: ticker, Precision: 18, Rate: decimal.NewFromFloat(val)}
 	}
@@ -54,14 +59,19 @@ func DoRates(currencies []string) []*RateRecord {
 		return &record
 	}
 
-	for i := 0; i < len(currencies)-1; i++ {
-		for j := i + 1; j < len(currencies); j++ {
-			result = append(result, doRate(currencies[i], currencies[j]), doRate(currencies[j], currencies[i]))
-		}
+	if exchangeRateTable != nil {
+		return nil
 	}
 
-	data, _ := json.Marshal(result)
-	fmt.Printf("%s\n", data)
+	for i := 0; i < len(currencies)-1; i++ {
+		for j := i + 1; j < len(currencies); j++ {
+			_, existsI := exchangeRateTable[currencies[i]]
+			_, existsJ := exchangeRateTable[currencies[j]]
+			if existsI && existsJ {
+				result = append(result, doRate(currencies[i], currencies[j]), doRate(currencies[j], currencies[i]))
+			}
+		}
+	}
 
 	return result
 }

@@ -1,37 +1,46 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"strings"
 
-	"github.com/gin-gonic/gin"
 	"example/kryptonim-homework/exchange"
 	"example/kryptonim-homework/rates"
-	"example/kryptonim-homework/utils"
-)
 
-/*
- TODO:
-   - obsługa błędów
-*/
+	"github.com/gin-gonic/gin"
+	"github.com/shopspring/decimal"
+)
 
 func getRates(c *gin.Context) {
 	currenciesStr, _ := c.GetQuery("currencies")
 	currenciesVec := strings.Split(currenciesStr, ",")
-	fmt.Println(currenciesStr)
-	result := rates.DoRates(currenciesVec)
-	c.IndentedJSON(http.StatusOK, result)
+	if len(currenciesVec) <= 1 {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid input parameters"})
+	} else {
+		result := rates.DoRates(currenciesVec)
+		if result != nil {
+			c.IndentedJSON(http.StatusOK, result)
+		} else {
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Error from openexchangerates"})
+		}
+	}
 }
 
 func getExchange(c *gin.Context) {
-	from, _ := c.GetQuery("from")
-	to, _ := c.GetQuery("to")
-	amountStr, _ := c.GetQuery("amount")
-	amount := utils.DecimalNewFromString(amountStr)
+	from, okF := c.GetQuery("from")
+	to, okT := c.GetQuery("to")
+	amountStr, okA := c.GetQuery("amount")
+	amount, okA2 := decimal.NewFromString(amountStr)
+	if !okF || !okT || !okA || (okA2 != nil) {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid input parameters"})
+	}
 	result := exchange.DoExchange(from, to, amount)
-	resultF64, _ := result.Float64()
-	c.IndentedJSON(http.StatusOK, gin.H{"from": from, "to": to, "amount": resultF64})
+	if result != nil {
+		resultF64, _ := result.Float64()
+		c.IndentedJSON(http.StatusOK, gin.H{"from": from, "to": to, "amount": resultF64})
+	} else {
+		c.IndentedJSON(http.StatusBadRequest, gin.H{"error": "Invalid input parameters"})
+	}
 }
 
 func setupRouter() *gin.Engine {

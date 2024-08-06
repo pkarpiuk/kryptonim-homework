@@ -1,3 +1,5 @@
+https://github.com/pkarpiuk/kryptonim-homework.git
+
 docker build --no-cache=true --tag kryptonim-homework .
 docker run --rm -p 8080:8080 -ti kryptonim-homework
 
